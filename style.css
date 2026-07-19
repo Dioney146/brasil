@@ -1,210 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap');
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brasil — Liberados x Montados</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-:root {
-  --bg: #EDEFEA;
-  --bg-panel: #FFFFFF;
-  --linha: #D7DCD3;
-  --texto: #16241F;
-  --texto-suave: #55645C;
-  --rio: #1F6F5C;
-  --rio-escuro: #143F35;
-  --ambar: #C97A2B;
-  --ambar-bg: #FBEADA;
-  --raio: 10px;
-}
+<header class="topo">
+  <p class="marca">Brasil<span>.</span></p>
+  <p class="subtitulo">Acompanhamento de pedidos liberados e montados por estado, com histórico de extrações e horário de corte.</p>
+</header>
 
-* { box-sizing: border-box; }
+<main>
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--texto);
-  font-family: 'Inter', sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-}
+  <section class="painel">
+    <h2><span class="eyebrow">01</span> Estado</h2>
+    <div class="linha-controles">
+      <div class="campo">
+        <label for="estado-select">Selecione o estado</label>
+        <select id="estado-select">
+          <option value="">Escolha...</option>
+        </select>
+      </div>
+    </div>
+    <p id="status"></p>
+  </section>
 
-header.topo {
-  background: var(--rio-escuro);
-  color: #EFF5F1;
-  padding: 28px 32px 24px;
-  position: relative;
-  overflow: hidden;
-}
+  <section class="painel" id="snapshot-section" hidden>
+    <h2><span class="eyebrow">02</span> Situação em um snapshot</h2>
+    <div class="linha-controles">
+      <div class="campo">
+        <label for="snapshot-select">Extração (corte)</label>
+        <select id="snapshot-select"></select>
+      </div>
+    </div>
+    <div class="resumo-cards" id="snapshot-resumo"></div>
+    <div id="snapshot-tabela"></div>
+  </section>
 
-header.topo::after {
-  content: "";
-  position: absolute;
-  right: -40px;
-  top: -40px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(31,111,92,0.55) 0%, transparent 70%);
-}
+  <section class="painel" id="compare-section" hidden>
+    <h2><span class="eyebrow">03</span> Comparar dois momentos</h2>
+    <div class="linha-controles">
+      <div class="campo">
+        <label for="compare-antes">Antes</label>
+        <select id="compare-antes"></select>
+      </div>
+      <div class="campo">
+        <label for="compare-depois">Depois</label>
+        <select id="compare-depois"></select>
+      </div>
+      <button id="compare-btn">Comparar</button>
+    </div>
+    <div class="resumo-cards" id="compare-resumo"></div>
+    <div id="compare-tabelas"></div>
+  </section>
 
-.marca {
-  font-family: 'Space Grotesk', sans-serif;
-  font-weight: 700;
-  font-size: 26px;
-  letter-spacing: -0.02em;
-  margin: 0;
-}
+</main>
 
-.marca span { color: #7FD8B8; }
-
-.subtitulo {
-  color: #B9CBC2;
-  margin: 6px 0 0;
-  font-size: 14px;
-  max-width: 520px;
-}
-
-main {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 28px 32px 80px;
-}
-
-.painel {
-  background: var(--bg-panel);
-  border: 1px solid var(--linha);
-  border-radius: var(--raio);
-  padding: 22px 24px;
-  margin-bottom: 22px;
-}
-
-.painel h2 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 16px;
-  margin: 0 0 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.painel h2 .eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--rio);
-  background: #E4F1EB;
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-weight: 700;
-}
-
-.linha-controles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: flex-end;
-}
-
-.campo {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.campo label {
-  font-size: 12px;
-  color: var(--texto-suave);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-select, button {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
-  padding: 9px 12px;
-  border-radius: 7px;
-  border: 1px solid var(--linha);
-  background: var(--bg-panel);
-  color: var(--texto);
-}
-
-select { min-width: 220px; }
-
-button {
-  background: var(--rio);
-  color: white;
-  border: none;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 10px 18px;
-}
-
-button:hover { background: var(--rio-escuro); }
-
-#status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
-  color: var(--texto-suave);
-  margin-top: 10px;
-}
-
-#status.erro { color: var(--ambar); }
-
-.resumo-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin: 18px 0;
-}
-
-.card {
-  background: #F2F6F3;
-  border: 1px solid var(--linha);
-  border-radius: 8px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.card-numero {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 26px;
-  color: var(--rio-escuro);
-}
-
-.card-label {
-  font-size: 12px;
-  color: var(--texto-suave);
-}
-
-.card-alerta { background: var(--ambar-bg); border-color: #E8C79B; }
-.card-alerta .card-numero { color: var(--ambar); }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  margin-top: 8px;
-}
-
-th, td {
-  text-align: left;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--linha);
-}
-
-th {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--texto-suave);
-  letter-spacing: 0.03em;
-}
-
-tbody tr:hover { background: #F7F9F7; }
-
-.aviso {
-  color: var(--texto-suave);
-  font-size: 13px;
-  font-style: italic;
-}
-
-[hidden] { display: none !important; }
+<script src="papaparse.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
