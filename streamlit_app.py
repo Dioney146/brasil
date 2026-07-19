@@ -33,6 +33,11 @@ def carregar_historico(csv_url: str) -> pd.DataFrame:
     df["EXTRACAO_TS"] = pd.to_datetime(df["EXTRACAO_TS"])
     df["POSICAO"] = df["POSICAO"].astype(str).str.strip().str.upper()
     df["NUMPED"] = df["NUMPED"].astype(str)
+    # O export do Whyntor traz uma linha por item/produto do pedido, então o
+    # mesmo NUMPED pode se repetir várias vezes dentro do mesmo snapshot.
+    # Para contar pedidos (não itens), mantemos só uma linha por NUMPED em
+    # cada extração.
+    df = df.drop_duplicates(subset=["EXTRACAO_TS", "NUMPED"], keep="first")
     return df
 
 
