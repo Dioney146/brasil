@@ -1,34 +1,49 @@
 import streamlit as st
 import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="Brasil — Liberados x Montados", page_icon="🚚", layout="wide")
 
 # ------------------------------------------------------------------
-# Configuração dos estados
+# Configuração
 # ------------------------------------------------------------------
-# Cole aqui a URL publicada em CSV de cada aba HISTORICO_<estado> da planilha.
-#
-# Como pegar a URL:
-# 1. Na planilha Google, Arquivo > Compartilhar > Publicar na Web
-# 2. Selecione a aba HISTORICO_<estado> > formato CSV > Publicar
-# 3. Copie a URL gerada (algo como .../pubhtml?gid=XXXX&single=true)
-# 4. Troque "pubhtml" por "pub" e adicione "&output=csv" no final
+# ID da planilha: é o trecho entre /d/ e /edit na URL da sua planilha.
+# Ex: https://docs.google.com/spreadsheets/d/AQUI_ESTA_O_ID/edit -> copie AQUI_ESTA_O_ID
+SPREADSHEET_ID = "1NnTPvTdSZKJfPxiSA5R3bgpL2SzQAeQf2vNTvoKFMC4"
+
+# Nome da aba de histórico de cada estado (criadas automaticamente pelo Apps Script)
 CONFIG_ESTADOS = {
-    "AM": {
-        "nome": "Amazonas",
-        "csv_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR2XlWGFoKPGlo9p8COnOjenyUrl-gZJC1pdzmzut1BVZFnwY7zJ2_9PRz5CYhHXITswB3JvNohSxkE/pub?gid=119371517&single=true&output=csv",
-    },
-    "BA": {"nome": "Bahia", "csv_url": ""},
-    "DF": {"nome": "Distrito Federal", "csv_url": ""},
-    "MG": {"nome": "Minas Gerais", "csv_url": ""},
-    "SP": {"nome": "São Paulo", "csv_url": ""},
-    "SPW": {"nome": "São Paulo (SPW)", "csv_url": ""},
+    "AM": {"nome": "Amazonas", "aba": "HISTORICO_AM"},
+    "BA": {"nome": "Bahia", "aba": "HISTORICO_BA"},
+    "DF": {"nome": "Distrito Federal", "aba": "HISTORICO_DF"},
+    "MG": {"nome": "Minas Gerais", "aba": "HISTORICO_MG"},
+    "SP": {"nome": "São Paulo", "aba": "HISTORICO_SP"},
+    "SPW": {"nome": "São Paulo (SPW)", "aba": "HISTORICO_SPW"},
 }
 
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
-@st.cache_data(ttl=120)
-def carregar_historico(csv_url: str) -> pd.DataFrame:
-    df = pd.read_csv(csv_url)
+
+@st.cache_resource
+def conectar_planilha():
+    credenciais = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+    cliente = gspread.authorize(credenciais)
+    return cliente.open_by_key(SPREADSHEET_ID)
+
+
+@st.cache_data(ttl=30)
+def carregar_historico(aba_nome: str) -> pd.DataFrame:
+    planilha = conectar_planilha()
+    aba = planilha.worksheet(aba_nome)
+    registros = aba.get_all_records()
+    df = pd.DataFrame(registros)
+
+    if df.empty:
+        return df
+
     df = df.dropna(subset=["NUMPED", "EXTRACAO_TS"])
     df["EXTRACAO_TS"] = pd.to_datetime(df["EXTRACAO_TS"])
     df["POSICAO"] = df["POSICAO"].astype(str).str.strip().str.upper()
@@ -49,34 +64,44 @@ def formatar_ts(ts: pd.Timestamp) -> str:
 # UI
 # ------------------------------------------------------------------
 st.title("🚚 Brasil — Liberados x Montados")
-st.caption("Acompanhamento de pedidos liberados e montados por estado, com histórico de extrações e horário de corte.")
+st.caption("Acompanhamento de pedidos liberados e montados por estado, com histórico de extrações e horário de corte. Conectado ao vivo com a planilha.")
 
-col_estado, _ = st.columns([1, 3])
+col_estado, col_atualizar = st.columns([3, 1])
 with col_estado:
     sigla = st.selectbox(
         "Estado",
         options=list(CONFIG_ESTADOS.keys()),
         format_func=lambda s: f"{s} — {CONFIG_ESTADOS[s]['nome']}",
     )
+with col_atualizar:
+    st.write("")
+    if st.button("🔄 Atualizar agora"):
+        st.cache_data.clear()
+        st.rerun()
 
 info = CONFIG_ESTADOS[sigla]
-if not info["csv_url"]:
-    st.warning(f"Nenhuma URL configurada para **{sigla}** ainda. Edite `CONFIG_ESTADOS` no topo do arquivo.")
+
+if SPREADSHEET_ID == "COLE_AQUI_O_ID_DA_PLANILHA":
+    st.error("Configure o SPREADSHEET_ID no topo do arquivo `streamlit_app.py`.")
     st.stop()
 
 try:
     with st.spinner(f"Carregando dados de {sigla}..."):
-        df = carregar_historico(info["csv_url"])
+        df = carregar_historico(info["aba"])
+except gspread.exceptions.WorksheetNotFound:
+    st.warning(f"A aba **{info['aba']}** ainda não existe na planilha. Rode um snapshot desse estado primeiro.")
+    st.stop()
 except Exception as e:
     st.error(f"Erro ao carregar dados de {sigla}: {e}")
     st.stop()
 
-snapshots = sorted(df["EXTRACAO_TS"].unique())
-if not snapshots:
-    st.warning("Nenhum snapshot encontrado. Rode o snapshot na planilha primeiro.")
+if df.empty:
+    st.warning(f"A aba {info['aba']} está vazia. Rode um snapshot desse estado primeiro.")
     st.stop()
 
-st.success(f"{len(df)} linhas carregadas · {len(snapshots)} snapshot(s) disponível(is) para {sigla}.")
+snapshots = sorted(df["EXTRACAO_TS"].unique())
+
+st.success(f"{len(df)} pedidos carregados · {len(snapshots)} snapshot(s) disponível(is) para {sigla}. Atualiza sozinho a cada 30s.")
 
 # ------------------------------------------------------------------
 # Seção 1: situação em um snapshot (o "corte")
