@@ -92,7 +92,8 @@ except gspread.exceptions.WorksheetNotFound:
     st.warning(f"A aba **{info['aba']}** ainda não existe na planilha. Rode um snapshot desse estado primeiro.")
     st.stop()
 except Exception as e:
-    st.error(f"Erro ao carregar dados de {sigla}: {e}")
+    st.error(f"Erro ao carregar dados de {sigla} ({type(e).__name__}):")
+    st.exception(e)
     st.stop()
 
 if df.empty:
